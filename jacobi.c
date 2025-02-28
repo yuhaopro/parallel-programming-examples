@@ -9,7 +9,16 @@
 // Usage on DICE:
 //    gcc -o jacobi jacobi.c -lpthread
 //    ./jacobi gridSize numWorkers numIters
-//
+
+/**
+ * 1. The jacobi iteration algorithm starts with a grid initialized with some values
+ * 2. This implementation uses 2 grids, with 1 as the buffer.
+ * 3. At each cell, it will take the average of it's neighbours (up, down, left, right)
+ * 4. eg. grid_1[i][j] = average of neighbours of grid_2[i][j]
+ * 5. This process is then repeated but grid_1 and grid_2 is swapped. (so grid_2 is now updated)
+ * 6. But before grid_2 is updated, a barrier is used to synchronize all threads to have finished updating grid_1, 
+ * 7.
+ */
 
 #define _REENTRANT
 #include <pthread.h>
@@ -19,7 +28,7 @@
 #include <limits.h>
 #define SHARED 1
 #define MAXGRID 258   /* maximum grid size, including boundaries */
-#define MAXWORKERS 4  /* maximum number of worker threads */
+#define MAXWORKERS 4  /* maximum number of worker threads --> follows bag of task paradigm */
 
 void *Worker(void *);
 void InitializeGrids();
@@ -55,7 +64,7 @@ int main(int argc, char *argv[]) {
   numIters = atoi(argv[3]);
   stripSize = gridSize/numWorkers;
 
-  barrier_init();
+  barrier_init(); // create the barriers
   InitializeGrids();
 
   start = times(&buffer);
@@ -129,7 +138,7 @@ void *Worker(void *arg) {
         maxdiff = temp;
     }
   }
-  maxDiff[myid] = maxdiff;
+  maxDiff[myid] = maxdiff; // sets the global variable maxDiff
 }
 
 void InitializeGrids() {
@@ -169,17 +178,33 @@ void barrier_init() {
 }
 
 void barrier() {
+    // Lock the mutex to ensure only one thread can enter the critical section at a time
     pthread_mutex_lock(&bstate.barrier_mutex);
+
+    // Increment the number of threads that have reached the barrier
     bstate.nthread++;
-    if(bstate.nthread == numWorkers) {
+
+    // Check if all threads have reached the barrier
+    if (bstate.nthread == numWorkers) {
+        // If all threads have arrived, move to the next round
         bstate.round++;
+
+        // Reset the thread count for the next use of the barrier
         bstate.nthread = 0;
+
+        // Wake up all threads waiting on the condition variable
         pthread_cond_broadcast(&bstate.barrier_cond);
     } else {
+        // If not all threads have arrived, save the current round number
         int lround = bstate.round;
+
+        // Wait for the condition variable to be signaled
+        // The loop ensures that threads are not woken up spuriously (spurious wakeups)
         do {
-            pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
-        } while(lround == bstate.round);
+            pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex); // the mutex lock here is implicitly released while waiting.
+        } while (lround == bstate.round); // Spinlock-like behavior: wait until the round changes
     }
+
+    // Unlock the mutex to allow other threads to proceed
     pthread_mutex_unlock(&bstate.barrier_mutex);
 }
