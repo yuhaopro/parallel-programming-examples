@@ -8,17 +8,21 @@
  * 
  * I also split the algorithm logic into 3 functions: phase_1, phase_2, phase_3.
  * 
+ * Threads were created using the pthread library and in the first approach, all threads are passed the same function.
+ * In the second approach, thread 0 is passed with a slightly different function while the other threads have the same function (will be explained below).
+ * For the arguments passed, the data array pointer is passed to each thread, but a start and end index is used to identify the chunk for the thread.
+ * 
  * My first approach is that I can use barriers after phase 1 and phase 2 to ensure all threads are synchronized. (in the function parallelprefixsum_standard)
  * 
  * As the program prepares to enter phase 1, no check is required since all threads will be used to process their respective chunks.
  * 
  * As the program prepares to enter phase 2, it should check if the thread is id == 0 and then thread 0 should execute phase 2 logic and go to the next barrier, while other threads who failed the check should already be waiting in the next barrier.
  * 
- * The same goes for phase 3, where a check is applied on the thread whose id != 0 to allow them to proceed with phase 3 logic. 
+ * The same goes for phase 3, where a check is applied on the thread whose id != 0 to allow other threads (excluding thread 0) to proceed with phase 3 logic. 
  * 
  * Upon further thought, I wonder if I can combine this logic so that only 1 modified barrier is required.
  * 
- * In a separate approach (in function parallelprefixsum),
+ * In this second approach (in function parallelprefixsum),
  * 
  * I want to allow thread 0 to perform the phase 2 task while all other threads are waiting in the condition queue. In this way, I only need to perform 1 synchronization for the whole algorithm, as thread 0 should be the one to initiate the broadcast to wake up all threads.
  * 
@@ -332,8 +336,8 @@ int main (int argc, char* argv[]) {
   showdata ("sequential prefix sum : ", arr1, NITEMS);
 
   // Calculate prefix sum in parallel on the other copy of the original data
-  // parallelprefixsum (arr2, NITEMS);
-  parallelprefixsum_standard(arr2, NITEMS);
+  parallelprefixsum (arr2, NITEMS);
+  // parallelprefixsum_standard(arr2, NITEMS);
   showdata ("parallel prefix sum   : ", arr2, NITEMS);
 
   // Check that the sequential and parallel results match
