@@ -22,7 +22,7 @@
  * 
  * I want to allow thread 0 to perform the phase 2 task while all other threads are waiting in the condition queue. In this way, I only need to perform 1 synchronization for the whole algorithm, as thread 0 should be the one to initiate the broadcast to wake up all threads.
  * 
- * This approach made me realize that there is a design flaw if I were to implement it as it is. I need to somehow guarantee that thread 0 is the last thread entering the monitor. For example, if thread 0 acquires the lock for the monitor before all other threads have been added to the wait condition queue, then once thread 0 completes and broadcasts to wake up all threads in the condition queue, some threads will get stucked in the wait condition queue, because they only got sent to the wait condition queue after thread 0 completes.
+ * This approach made me realize that there is a potential flaw if I were to implement it as it is. I need to somehow guarantee that thread 0 is the last thread entering the monitor. For example, if thread 0 acquires the lock for the monitor before all other threads have been added to the wait condition queue, then once thread 0 completes and broadcasts to wake up all threads in the condition queue, some threads will get stucked in the wait condition queue, because they only got sent to the wait condition queue after thread 0 completes.
  * 
  * To resolve this issue, I modified the monitor to have 2 wait condition queues. If thread 0 arrives first, and some other threads have yet to arrive, thread 0 should be placed in a wait condition queue (worker0_must_be_last_thread_cond). 
  * 
