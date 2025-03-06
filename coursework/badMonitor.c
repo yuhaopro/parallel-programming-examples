@@ -1,32 +1,12 @@
 // PPLS Exercise 1
 
+
 /**
- * @author Yuhao Zhu
- * 
- * # Overview
- * This program uses a monitor to achieve synchronization betweeen threads for performing the prefix sum algorithm.
- * A global struct variable is created representing the monitor.
- * The entry point to the monitor is represented by the barrier function.
- * I chose the monitor for condition synchronization here because I feel that it is much more intuitive due to the clear transition between states.
- * 
- * # Phase 1
- * In this phase, all threads are to perform the prefix sum on their own corresponding chunks.
- * The chunks are represented by a start and end index.
- * Since these threads will not interfere with each other chunks, mutual exclusion is not required on the shared prefix sum array.
- * 
- * Once a thread finishes processing their chunk, the thread will first attempt to acquire the mutex to execute code within the monitor.
- * If the thread is not the last thread to arrive, it will be instead placed in the condition queue.
- * If the last thread arrives, it will wake up all other threads in the condition queue.
- * This ensures all threads have arrived, and can proceed with phase 2.
- * 
- * # Phase 2 
- * In this phase, only thread 0 needs to perform the prefix sum calculation for the highest index in each chunk.
- * This means other threads should ignore this task and wait at the next synchronization point.
- * So I re-used the monitor to act as the next synchronization point. 
- * 
- * # Phase 3
- * In this phase, thread 0 has no more work left to do, while other threads will need to recompute their chunk by referencing the last value of the previous chunk. Therefore, there is no more synchronization required in this phase.
+ * @bug
+ * This code intends to synchronize phase 1 and phase 2 of the prefix sum algorithm using a monitor implementation with 2 condition queues. The code intends to have thread 0 be put in it's own condition queue if it is not the last thread to arrive after phase 1. If the other thread arrives last, it will wake up thread 0 to perform phase 2. The problem is each condition queue needs a spin lock to ensure it will not be affected by spurious wakeups. This is not possible to achieve with using 1 shared round variable to ensure both thread 0 and other threads are kept in their respective spin locks. Thus the code will fail if a spurious wakeup occurs.
  */
+
+
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -34,7 +14,7 @@
 #include <stdlib.h>
 
 #define SHOWDATA 1
-#define NITEMS 10000
+#define NITEMS 10000000
 #define NTHREADS 25
 
 typedef struct worker_params {
@@ -52,12 +32,13 @@ struct BarrierData {
   int round;   // volatile not required as mutex acts as memory barrier
 } bstate;
 
+pthread_cond_t worker0_must_be_last_thread_cond;
+
 void barrier_init();
 void *thread(void *arg);
 void phase_1(worker_params *worker_info);
 void phase_2(worker_params *worker_info);
 void phase_3(worker_params *worker_info);
-void barrier();
 
 // Print a helpful message followed by the contents of an array
 // Controlled by the value of SHOWDATA, which should be defined
@@ -102,6 +83,7 @@ void parallelprefixsum(int *data, int n) {
   int chunk_first_index = 0;
 
   barrier_init(); // initialize reusable barrier
+  pthread_cond_init(&worker0_must_be_last_thread_cond, NULL);
 
   for (int id = 0; id < NTHREADS; id++) {
     // initialize worker params
@@ -118,6 +100,12 @@ void parallelprefixsum(int *data, int n) {
     args[id].worker_id = id;
     chunk_first_index = next_chunk_first_index;
 
+    // if (id == 0) {
+    //   pthread_create(&threads[id], NULL, thread_0, (void *)&args[id]);
+    // } else {
+    //   pthread_create(&threads[id], NULL, other_threads, (void *)&args[id]);
+    // }
+
     pthread_create(&threads[id], NULL, thread, (void *)&args[id]);
   }
 
@@ -128,27 +116,52 @@ void parallelprefixsum(int *data, int n) {
 
 void *thread(void *arg) {
   worker_params *worker_info = (worker_params *)arg;
-
   phase_1(worker_info);
 
-  // threads wait at this barrier for other threads to arrive.
-  barrier();
+  pthread_mutex_lock(&bstate.barrier_mutex);
+  bstate.nthread += 1;
 
-  // if this is thread 0, proceed to do phase 2 work.
+  // if this is thread 0
   if (worker_info->worker_id == 0) {
+    // if this is not the last thread
+    if (bstate.nthread != NTHREADS) {
+      // thread 0 gets put in condition queue 1
+      int current_round = bstate.round;
+      do
+      {
+        pthread_cond_wait(&worker0_must_be_last_thread_cond, &bstate.barrier_mutex); 
+      } while (bstate.round == current_round);
+    }
+    // thread 0 gets woken up and perform phase 2 work.
     phase_2(worker_info);
+
+    // increment bstate round so that other threads can be woken up.
+    bstate.round += 1;
+    pthread_cond_broadcast(&bstate.barrier_cond);
+
+  } else {
+    if (bstate.nthread == NTHREADS) {
+      // thread x arrives and is last thread.
+      // wakes up thread 0 to start phase 2.
+      // adds to round so that thread 0 can break out of while loop.
+      bstate.round += 1;
+      pthread_cond_broadcast(
+          &worker0_must_be_last_thread_cond);
+    }
+
+    // BIG PROBLEM --> the round variable no longer works, because now it must control the spurious wakeup for both thread 0 and other threads.
+    int current_round = bstate.round;
+    do {
+      pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
+    } while (bstate.round == current_round);
   }
+  pthread_mutex_unlock(&bstate.barrier_mutex);
 
-  // those that are not thread 0 will wait at this barrier
-  barrier();
-
-  // if not thread 0, proceed to phase 3 work.
   if (worker_info->worker_id != 0) {
     phase_3(worker_info);
   }
-
-  // thread 0 will reach here first.
 }
+
 
 // perform the prefix sum from the 2nd to last element of the chunk.
 void phase_1(worker_params *worker_info) {
@@ -159,29 +172,43 @@ void phase_1(worker_params *worker_info) {
 void phase_2(worker_params *worker_info) {
   int slice = worker_info->size;
   int chunk_last_index = slice - 1;
-  for (int i = 1; i < NTHREADS; i++) {
-    int cur_chunk_value = (worker_info->data)[chunk_last_index];
+  for (int i = 1; i < NTHREADS;
+       i++) // NTHREADS - 1 chunks since first chunk doesn't need to update
+  {
+    int cur_chunk_value =
+        (worker_info->data)[chunk_last_index]; // eg. chunk 0 value
     int next_chunk_index = chunk_last_index + slice;
-    int next_chunk_value = (worker_info->data)[next_chunk_index];
+    int next_chunk_value =
+        (worker_info->data)[next_chunk_index]; // eg. chunk 1 value
 
     if (i == NTHREADS - 1) { // last chunk
       next_chunk_index = NITEMS - 1;
-      next_chunk_value = (worker_info->data)[next_chunk_index];
+      next_chunk_value =
+          (worker_info->data)[next_chunk_index]; // last item in array
     }
 
-    int new_next_chunk_value = cur_chunk_value + next_chunk_value;
-    worker_info->data[next_chunk_index] = new_next_chunk_value;
+    int new_next_chunk_value =
+        cur_chunk_value +
+        next_chunk_value; // eg. compute chunk 1 value with chunk 0
+    worker_info->data[next_chunk_index] =
+        new_next_chunk_value; // updates chunk 1
     chunk_last_index = next_chunk_index;
+    // showdata("data array [during phase 2]: ", worker_info->data, NITEMS);
   }
 }
-
 void phase_3(worker_params *worker_info) {
   int cur_chunk_start_idx = worker_info->start;
   int prev_chunk_last_val = worker_info->data[cur_chunk_start_idx - 1];
 
-  for (int i = cur_chunk_start_idx; i < worker_info->end - 1; i++) {
+  // all other threads need to compute from their first chunk index to the
+  // second last index.
+  for (int i = cur_chunk_start_idx; i < worker_info->end - 1;
+       i++) // omit the last indexed value as it was calculated in the second
+            // phase
+  {
     worker_info->data[i] = worker_info->data[i] + prev_chunk_last_val;
   }
+  // showdata("data array [during phase 3]: ", worker_info->data, NITEMS);
 }
 
 void barrier_init() {
@@ -191,28 +218,23 @@ void barrier_init() {
 }
 
 void barrier() {
-  // only 1 thread can come into the barrier at a time.
-  // if not they will be blocked here.
+  // only 1 thread can come into the barrier at a time
+  // if not they will be blocked here
   pthread_mutex_lock(&bstate.barrier_mutex);
   bstate.nthread += 1;
 
-  // check if this is the last thread.
-  // if it is, all threads have arrived.
   if (bstate.nthread == NTHREADS) {
     bstate.round += 1;
     bstate.nthread = 0;
     pthread_cond_broadcast(
-        &bstate.barrier_cond); // wakes up all threads waiting.
+        &bstate.barrier_cond); // wakes up all threads waiting
   } else {
-    // this is not the last thread.
-    // thread should join the condition queue.
     int current_round = bstate.round;
 
     do {
       pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
     } while (bstate.round == current_round); // prevents spurious wakeups
   }
-
   pthread_mutex_unlock(&bstate.barrier_mutex);
 }
 
