@@ -164,11 +164,12 @@ void InitializeGrids() {
   }
 }
 
+
 struct BarrierData {
   pthread_mutex_t barrier_mutex;
   pthread_cond_t barrier_cond;
-  int nthread; // Number of threads that have reached this round of the barrier
-  int round;   // Barrier round id
+  int nthread; // volatile not required since mutex acts as memory barrier
+  int round; // volatile not required since mutex acts as memory barrier
 } bstate;
 
 void barrier_init() {

@@ -101,7 +101,8 @@ void parallelprefixsum(int *data, int n) {
   int chunk_slice = NITEMS / NTHREADS;
   int chunk_first_index = 0;
 
-  barrier_init(); // initialize reusable barrier
+  // initialize barrier mutex and condition variables.
+  barrier_init();
 
   for (int id = 0; id < NTHREADS; id++) {
     // initialize worker params
@@ -131,23 +132,17 @@ void *thread(void *arg) {
 
   phase_1(worker_info);
 
-  // threads wait at this barrier for other threads to arrive.
   barrier();
 
-  // if this is thread 0, proceed to do phase 2 work.
   if (worker_info->worker_id == 0) {
     phase_2(worker_info);
   }
 
-  // those that are not thread 0 will wait at this barrier
   barrier();
 
-  // if not thread 0, proceed to phase 3 work.
   if (worker_info->worker_id != 0) {
     phase_3(worker_info);
   }
-
-  // thread 0 will reach here first.
 }
 
 // perform the prefix sum from the 2nd to last element of the chunk.
