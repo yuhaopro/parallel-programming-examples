@@ -1,12 +1,4 @@
 // A BROKEN simple producer/consumer program using semaphores and threads
-//
-// Taken from Greg Andrews' textbook website
-// http://www.cs.arizona.edu/people/greg/mpdbook/programs/
-//
-// then BROKEN by taking out the semaphores!
-//
-// Compile: gcc -o badprodcom badprodcom.c -lpthread
-// Run:     ./badprodcom numIters  (eg ./prodcom 20000)
 
 /**
  * 1. producer thread writes to global buffer data = 1
