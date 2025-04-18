@@ -14,7 +14,16 @@ This is a compilation of parallel programming examples and my coursework assignm
 - `coursework/` - parallel prefix sum algorithm and the use of barriers for synchronizing between algorithm phases.
 - `mpi.c` - uses message passing to divide bag of tasks among a fixed number of threads.
 # Running the code
-```
+```bash
 gcc <filename>.c -o test
-./test 
+./test
+
+# for mpi, install the required libary
+sudo apt install build-essential
+sudo apt install openmpi-bin libopenmpi-dev
+
+# check binary
+which mpic++
+
+# set this to compiler path in .vscode/c_cpp_properties.json
 ```
