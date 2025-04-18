@@ -2,7 +2,7 @@
 #include <vector> // Use vector for easier management if needed, but arrays are fine
 #include <mpi.h>
 
-#define MAX_TASKS 100
+#define MAX_TASKS 10
 // Make NO_MORE_TASKS distinct from any valid task ID (1 to MAX_TASKS)
 #define NO_MORE_TASKS (MAX_TASKS + 1)
 #define FARMER 0
