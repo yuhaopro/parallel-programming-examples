@@ -6,9 +6,6 @@
 // the value actually picked up by sayhello depends upon 
 // the interleaving of these events. The sleep() just
 // encourages the effect.
-//
-// Compile: gcc nasty.c -o nasty -lpthread
-// Run: ./nasty
 
 /**
  * 1. main thread create thread 0
