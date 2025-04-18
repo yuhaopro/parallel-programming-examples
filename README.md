@@ -5,7 +5,7 @@
 </p>
 
 # Description
-This is a compilation of parallel programming examples and my coursework assignment at the University of Edinburgh. 
+This is a compilation of parallel programming examples which I have made and referenced with other sources.
 
 - `*Counter.c` - showcases race condition when multiple threads are incrementing a shared variable
 - `*HelloWorld.c` - showcases race condition when passing a variable pointer to the thread argument.
