@@ -1,0 +1,1 @@
+/usr/bin/mpic++ CMakeFiles/generator.dir/generator.cpp.o -o generator 
