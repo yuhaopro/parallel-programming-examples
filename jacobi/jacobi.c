@@ -1,15 +1,3 @@
-//Adapted from Jacobi iteration using pthreads by Greg Andrews see
-//
-// http://www.cs.arizona.edu/people/greg/mpdbook/programs/jacobi.c
-//
-// Improved barrier implementation (addressing spurious wakeups) from
-//
-// https://stackoverflow.com/questions/73154724/creating-a-barrier-for-multi-thread
-//
-// Usage on DICE:
-//    gcc -o jacobi jacobi.c -lpthread
-//    ./jacobi gridSize numWorkers numIters
-
 /**
  * 1. The jacobi iteration algorithm starts with a grid initialized with some values
  * 2. This implementation uses 2 grids, with 1 as the buffer.
