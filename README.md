@@ -13,6 +13,11 @@ This is a compilation of parallel programming examples which I have made and ref
 - `jacobi.c` - showcases the use of barriers to provide thread synchronization
 - `coursework/` - parallel prefix sum algorithm and the use of barriers for synchronizing between algorithm phases.
 - `mpi.c` - uses message passing to divide bag of tasks among a fixed number of threads.
+<p align="center">
+    <img src="images/mpi-task-allocation.png"
+         alt="Task Allocation with MPI">
+</p>
+
 # Running the code
 ```bash
 gcc <filename>.c -o test
