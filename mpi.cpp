@@ -46,11 +46,10 @@ int main(int argc, char *argv[])
 
 void farmer(int num_of_workers)
 {
-    // Use vectors or arrays, ensure indexing is correct
-    int task_data[MAX_TASKS + 1];           // Holds the actual data/value for each task
-    int result_data[MAX_TASKS + 1];         // Store results, maybe index by task_id? Or worker_id? Let's rethink.
-                                            // Let's store results associated with the worker who did them initially.
-    int worker_results[num_of_workers + 1]; // Index by worker_id (1 to num_of_workers)
+    // Use vectors or arrays, ensure indexing is correct. Index should follow worker's rank.
+    int task_data[MAX_TASKS + 1];           
+    int result_data[MAX_TASKS + 1];         
+    int worker_results[num_of_workers + 1];
 
     int next_task_id; // Use this consistently
     int temp_result;
@@ -127,82 +126,17 @@ void farmer(int num_of_workers)
     // --- Phase 3 ---
     // All tasks have been assigned. Send termination signal to workers
     // as they report their last result (which we already received in Phase 2).
-    // Wait, the logic above already receives all MAX_TASKS results.
-    // We just need to tell the workers who are now waiting for a task to stop.
-    // How many workers are waiting? All of them potentially finished their last assigned task in Phase 2.
     std::cout << "Farmer: Starting Phase 3 (Termination)..." << std::endl;
     for (int worker_rank = 1; worker_rank <= num_of_workers; ++worker_rank)
     {
-        // Need to receive the *final* result from each worker before sending termination?
-        // No, Phase 2 loop condition `completed_task_count < MAX_TASKS` ensures we received all results.
-        // The workers whose results were received last in Phase 2 are now waiting for a send.
 
         // Send the termination signal. The worker rank is `worker_rank`.
         int dummy_data = 0; // Value doesn't matter
         int message_tag = NO_MORE_TASKS;
         int message_dest = worker_rank;
-
-        // PROBLEM: We don't know which worker is waiting on MPI_Recv now.
-        // A better approach: When a worker sends its result in phase 2,
-        // if farmer has no more tasks, farmer sends NO_MORE_TASKS immediately.
-
-        // ---- REVISED Phase 2 / Phase 3 Logic ----
-        // Combine receiving results and sending new tasks/termination signal
-
-        // Reset completed count for the combined loop
-        completed_task_count = 0;
-        next_task_id = num_of_workers + 1; // Assuming initial tasks 1..num_workers were assigned.
-
-        std::cout << "Farmer: Starting Combined Phase 2/3 (Receive Results, Send Next Task or Terminate)..." << std::endl;
-        while (completed_task_count < MAX_TASKS)
-        {
-            // Receive any result
-            MPI_Recv(&temp_result, MESSAGE_COUNT, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            int message_src = status.MPI_SOURCE;
-            int completed_task_tag = status.MPI_TAG; // ID of task just finished
-
-            if (completed_task_tag == NO_MORE_TASKS)
-            { // Should not happen if worker logic is correct
-                std::cout << "Farmer: Warning - Received NO_MORE_TASKS tag from worker " << message_src << std::endl;
-                continue; // Skip processing this unexpected message
-            }
-
-            std::cout << "Farmer: Received Result " << temp_result << " for Task " << completed_task_tag << " from Worker Rank " << message_src << std::endl;
-            result_data[completed_task_tag] = temp_result;
-            completed_task_count++;
-
-            // Send next task or termination signal
-            int task_to_send_id;
-            int message_tag;
-            int data_to_send;
-
-            if (next_task_id <= MAX_TASKS)
-            {
-                // Send next task
-                task_to_send_id = next_task_id;
-                message_tag = task_to_send_id;
-                data_to_send = task_data[task_to_send_id];
-                std::cout << "Farmer: Sending Task " << task_to_send_id << " (Value: " << data_to_send << ") to Worker Rank " << message_src << std::endl;
-                next_task_id++;
-            }
-            else
-            {
-                // No more tasks, send termination signal
-                message_tag = NO_MORE_TASKS;
-                data_to_send = 0; // Dummy data
-                std::cout << "Farmer: Sending NO_MORE_TASKS signal to Worker Rank " << message_src << std::endl;
-            }
-            MPI_Send(&data_to_send, MESSAGE_COUNT, MPI_INT, message_src, message_tag, MPI_COMM_WORLD);
-        }
-        std::cout << "Farmer: Finished Combined Phase 2/3." << std::endl;
-
-        // At this point, all MAX_TASKS results are received, and termination signals
-        // have been sent to the workers who sent the final results. What about workers
-        // who finished earlier and received tasks, but maybe haven't received termination?
-        // The logic ensures *every* receive of a valid result is matched by *either* a new task
-        // or a termination signal. So all workers should eventually receive NO_MORE_TASKS.
-
-    } // End Farmer
+        std::cout << "Farmer: Sending Terminate Signal to Worker " << worker_rank << std::endl;
+        MPI_Send(&dummy_data, MESSAGE_COUNT, MPI_INT, message_dest, message_tag, MPI_COMM_WORLD);
+    } 
 }
 
 void worker(int rank)
