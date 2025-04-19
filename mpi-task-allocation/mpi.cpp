@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vector> // Use vector for easier management if needed, but arrays are fine
 #include <mpi.h>
 
 #define MAX_TASKS 10
