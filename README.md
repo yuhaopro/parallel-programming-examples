@@ -13,7 +13,8 @@ Some of the concepts will have diagrams to explain the algorithm.
 - `producer-consumer/` - showcases race condition when reading data while another thread is writing to it.
 - `jacobi/` - showcases the use of barriers to provide thread synchronization
 - `coursework/` - parallel prefix sum algorithm and the use of barriers for synchronizing between algorithm phases.
-- `mpi/` - uses message passing to divide bag of tasks among a fixed number of threads, and adapting MPI code in finding prime numbers.
+- `mpi-task-allocation/` - showcases message passing to divide bag of tasks among a fixed number of threads.
+- `mpi-prime-sieve/` - showcases spawning of MPI child processes for finding prime numbers.
 
 ## MPI Task Allocation Diagram
 <p align="center">
