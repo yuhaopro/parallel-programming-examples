@@ -32,8 +32,8 @@ gcc <filename>.c -o test
 ```
 
 # Message Passing
-- `mpi-task-allocation/` - showcases message passing to divide bag of tasks among a fixed number of threads.
-- `mpi-prime-sieve/` - showcases spawning of MPI child processes for finding prime numbers.
+- `task-allocation/` - showcases message passing to divide bag of tasks among a fixed number of threads.
+- `prime-sieve/` - showcases spawning of MPI child processes for finding prime numbers.
 
 ## How to use
 ```bash
