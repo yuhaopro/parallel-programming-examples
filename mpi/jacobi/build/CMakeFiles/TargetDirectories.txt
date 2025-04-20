@@ -1,0 +1,7 @@
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/jacobi.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/edit_cache.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/rebuild_cache.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/list_install_components.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/install.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/install/local.dir
+/home/yuhaopro/Projects/PPLS/parallel-programming-examples/mpi/jacobi/build/CMakeFiles/install/strip.dir
