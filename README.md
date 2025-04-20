@@ -58,6 +58,9 @@ cd mpi-prime-sieve/build
 make
 
 mpirun -np 1 generator 10
+
+# run on multiple machines
+mpirun -np 2 --hostfile hostfile.txt jacobi
 ```
 
 ## Task Allocation
